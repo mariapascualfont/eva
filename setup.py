@@ -3,7 +3,7 @@ from setuptools import setup, find_packages
 setup(
     name="eva-bio",
     version="1.0.0",
-    description="AI-powered shell command assistant for bioinformaticians",
+    description="AI-powered shell command assistant for bioinformaticians (Gemini API backend)",
     author="Your Name",
     python_requires=">=3.8",
     py_modules=["eva", "eva_core", "eva_tools"],

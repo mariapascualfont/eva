@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 eva - AI-powered shell command assistant for bioinformaticians
-Uses a local Ollama model to translate natural language into shell commands.
+Uses the Google Gemini API to translate natural language into shell commands.
 """
 
 import argparse
@@ -34,8 +34,8 @@ Examples:
 
     parser.add_argument(
         "--model",
-        default="llama3",
-        help="Ollama model to use (default: llama3)",
+        default="gemini-2.0-flash",
+        help="Gemini model to use (default: gemini-2.0-flash). Can also set EVA_GEMINI_MODEL env var.",
     )
 
     parser.add_argument(

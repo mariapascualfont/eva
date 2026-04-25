@@ -1,5 +1,5 @@
 """
-eva_core.py - Core logic for Eva: prompt construction, Anthropic API, output rendering.
+eva_core.py - Core logic for Eva: prompt construction, Gemini API, output rendering.
 """
 
 import sys
@@ -50,17 +50,21 @@ RULES:
 
 
 class EvaCore:
-    ANTHROPIC_URL = "https://api.anthropic.com/v1/messages"
-    ANTHROPIC_MODEL = "claude-sonnet-4-20250514"
-    ANTHROPIC_VERSION = "2023-06-01"
+    GEMINI_MODEL = "gemini-2.0-flash"
+    GEMINI_URL = (
+        "https://generativelanguage.googleapis.com/v1beta/models/"
+        "{model}:generateContent?key={key}"
+    )
 
     def __init__(self, model: str = None):
-        # model arg kept for CLI compat but Anthropic model is fixed
-        self.api_key = os.environ.get("ANTHROPIC_API_KEY", "")
+        # model arg kept for CLI compat; override with EVA_GEMINI_MODEL if needed
+        self.model = os.environ.get("EVA_GEMINI_MODEL", model or self.GEMINI_MODEL)
+        self.api_key = os.environ.get("GEMINI_API_KEY", "")
         if not self.api_key:
             self._error(
-                "ANTHROPIC_API_KEY not set.\n"
-                "  Export it first: export ANTHROPIC_API_KEY=sk-ant-..."
+                "GEMINI_API_KEY not set.\n"
+                "  Get a free key at: https://aistudio.google.com\n"
+                "  Then run: export GEMINI_API_KEY=your-key-here"
             )
 
     def _build_system_prompt(self) -> str:
@@ -69,47 +73,49 @@ class EvaCore:
         )
         return SYSTEM_PROMPT.format(tool_knowledge=tool_knowledge_str)
 
-    def _call_anthropic(self, query: str) -> dict:
-        headers = {
-            "x-api-key": self.api_key,
-            "anthropic-version": self.ANTHROPIC_VERSION,
-            "content-type": "application/json",
-        }
+    def _call_gemini(self, query: str) -> dict:
+        url = self.GEMINI_URL.format(model=self.model, key=self.api_key)
         payload = {
-            "model": self.ANTHROPIC_MODEL,
-            "max_tokens": 512,
-            "system": self._build_system_prompt(),
-            "messages": [
+            "system_instruction": {
+                "parts": [{"text": self._build_system_prompt()}]
+            },
+            "contents": [
                 {
                     "role": "user",
-                    "content": f"User query: {query}\n\nRespond with JSON only.",
+                    "parts": [{"text": f"User query: {query}\n\nRespond with JSON only."}],
                 }
             ],
+            "generationConfig": {
+                "responseMimeType": "application/json",
+                "maxOutputTokens": 512,
+                "temperature": 0.1,
+            },
         }
 
         try:
-            response = requests.post(
-                self.ANTHROPIC_URL,
-                headers=headers,
-                json=payload,
-                timeout=30,
-            )
+            response = requests.post(url, json=payload, timeout=30)
             response.raise_for_status()
         except requests.exceptions.ConnectionError:
-            self._error("Cannot reach the Anthropic API. Check your internet connection.")
+            self._error("Cannot reach the Gemini API. Check your internet connection.")
         except requests.exceptions.Timeout:
-            self._error("Anthropic API request timed out. Try again.")
+            self._error("Gemini API request timed out. Try again.")
         except requests.exceptions.HTTPError as e:
             status = e.response.status_code if e.response else "?"
-            if status == 401:
-                self._error("Invalid ANTHROPIC_API_KEY. Check your key and try again.")
+            if status == 400:
+                self._error("Bad request to Gemini API. The query may be malformed.")
+            elif status == 403:
+                self._error("Invalid GEMINI_API_KEY. Check your key at aistudio.google.com.")
             elif status == 429:
-                self._error("Rate limit hit. Wait a moment and try again.")
+                self._error("Gemini rate limit hit. Wait a moment and try again.")
             else:
-                self._error(f"Anthropic API error {status}: {e}")
+                self._error(f"Gemini API error {status}: {e}")
 
         data = response.json()
-        raw = data.get("content", [{}])[0].get("text", "")
+        try:
+            raw = data["candidates"][0]["content"]["parts"][0]["text"]
+        except (KeyError, IndexError):
+            self._error(f"Unexpected Gemini response format:\n{json.dumps(data, indent=2)}")
+
         return self._parse_response(raw)
 
     def _parse_response(self, raw: str) -> dict:
@@ -141,7 +147,7 @@ class EvaCore:
     def run(self, query: str, explain: bool = False):
         self._print_header(query)
 
-        result = self._call_anthropic(query)
+        result = self._call_gemini(query)
 
         command = result.get("command", "")
         explanation = result.get("explanation", "")
