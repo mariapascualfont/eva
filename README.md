@@ -28,6 +28,7 @@ export GROQ_API_KEY=your-key-here
 ### 2. Install Eva
 
 ```bash
+git clone https://github.com/mariapascualfont/eva.git
 cd eva/
 pip install .
 ```
