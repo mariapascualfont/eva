@@ -79,11 +79,10 @@ class EvaCore:
             "model": self.model,
             "messages": [
                 {"role": "system", "content": self._build_system_prompt()},
-                {"role": "user", "content": f"User query: {query}\n\nRespond with JSON only."},
+                {"role": "user", "content": f"User query: {query}\n\nRespond with a JSON object only. No markdown, no extra text."},
             ],
             "max_tokens": 512,
             "temperature": 0.1,
-            "response_format": {"type": "json_object"},
         }
 
         try:
