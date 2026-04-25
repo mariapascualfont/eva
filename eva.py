@@ -34,8 +34,8 @@ Examples:
 
     parser.add_argument(
         "--model",
-        default="llama3-8b-8192",
-        help="Groq model to use (default: llama3-8b-8192). Other options: llama3-70b-8192, mixtral-8x7b-32768. Can also set EVA_GROQ_MODEL env var.",
+        default="gpt-4o",
+        help="Junie model to use (default: gpt-4o).",
     )
 
     parser.add_argument(
