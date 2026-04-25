@@ -4,7 +4,7 @@ setup(
     name="eva-bio",
     version="1.0.0",
     description="AI-powered shell command assistant for bioinformaticians (Groq API backend)",
-    author="Your Name",
+    author="Eva Sanz, Kexi Wei, Carla Pallés and Maria Pascual",
     python_requires=">=3.8",
     py_modules=["eva", "eva_core", "eva_tools"],
     install_requires=[
