@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 eva - AI-powered shell command assistant for bioinformaticians
-Uses the Groq API to translate natural language into shell commands.
+Uses the Junie AI API to translate natural language into shell commands.
 """
 
 import argparse
@@ -35,7 +35,7 @@ Examples:
     parser.add_argument(
         "--model",
         default="gpt-4o",
-        help="Junie model to use (default: gpt-4o).",
+        help="Junie model to use (default: gpt-4o). Can also set EVA_MODEL env var.",
     )
 
     parser.add_argument(

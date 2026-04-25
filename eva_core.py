@@ -79,10 +79,11 @@ class EvaCore:
             "model": self.model,
             "messages": [
                 {"role": "system", "content": self._build_system_prompt()},
-                {"role": "user", "content": f"User query: {query}\n\nRespond with a JSON object only. No markdown, no extra text."},
+                {"role": "user", "content": f"User query: {query}\n\nRespond with a JSON object only."},
             ],
             "max_tokens": 512,
             "temperature": 0.1,
+            "response_format": {"type": "json_object"},
         }
 
         try:
@@ -99,8 +100,7 @@ class EvaCore:
             elif status == 429:
                 self._error("Junie rate limit hit. Wait a moment and try again.")
             elif status == 400:
-                # Retrying without json_object if the specific model doesn't support it
-                payload.pop("response_format", None)
+                payload.pop("response_format", None) 
                 try:
                     response = requests.post(self.JUNIE_URL, headers=headers, json=payload, timeout=30)
                     response.raise_for_status()
