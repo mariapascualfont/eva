@@ -51,7 +51,7 @@ RULES:
 
 class EvaCore:
     GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
-    GROQ_MODEL = "llama3-8b-8192"  # fast, free-tier friendly
+    GROQ_MODEL = "llama-3.1-8b-instant"  # fast, free-tier, reliable JSON output
 
     def __init__(self, model: str = None):
         self.model = os.environ.get("EVA_GROQ_MODEL", model or self.GROQ_MODEL)
@@ -78,11 +78,10 @@ class EvaCore:
             "model": self.model,
             "messages": [
                 {"role": "system", "content": self._build_system_prompt()},
-                {"role": "user", "content": f"User query: {query}\n\nRespond with JSON only."},
+                {"role": "user", "content": f"User query: {query}\n\nRespond with a JSON object only. No markdown, no extra text."},
             ],
             "max_tokens": 512,
             "temperature": 0.1,
-            "response_format": {"type": "json_object"},
         }
 
         try:
@@ -98,14 +97,6 @@ class EvaCore:
                 self._error("Invalid GROQ_API_KEY. Check your key at console.groq.com.")
             elif status == 429:
                 self._error("Groq rate limit hit. Wait a moment and try again.")
-            elif status == 400:
-                # Some Groq models don't support json_object mode — retry without it
-                payload.pop("response_format", None)
-                try:
-                    response = requests.post(self.GROQ_URL, headers=headers, json=payload, timeout=30)
-                    response.raise_for_status()
-                except Exception as retry_err:
-                    self._error(f"Groq API error after retry: {retry_err}")
             else:
                 self._error(f"Groq API error {status}: {e}")
 
