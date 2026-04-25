@@ -19,6 +19,13 @@ def animated_greeting():
         time.sleep(0.03)
     sys.stdout.write("\033[0m\n")
 
+def print_welcome():
+    """Prints a friendly welcome message for the user."""
+    print("\033[1;36m" + "═" * 50)
+    print(" ⬡  Welcome to Eva: Your Bioinformatics AI Assistant")
+    print("    Type your request in natural language.")
+    print("═" * 50 + "\033[0m")
+
 def main():
     parser = argparse.ArgumentParser(
         prog="eva",
@@ -68,15 +75,16 @@ Examples:
 
     args = parser.parse_args()
 
+    if not args.query and not args.list_tools:
+        print_welcome()
+        parser.print_help()
+        sys.exit(0)
+
     eva = EvaCore(model=args.model)
 
     if args.list_tools:
         eva.print_known_tools()
         return
-
-    if not args.query:
-        parser.print_help()
-        sys.exit(1)
 
     query = " ".join(args.query)
     eva.run(query, explain=args.explain)
