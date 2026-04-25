@@ -1,5 +1,5 @@
 """
-eva_core.py - Core logic for Eva: prompt construction, Gemini API, output rendering.
+eva_core.py - Core logic for Eva: prompt construction, Groq API, output rendering.
 """
 
 import sys
@@ -50,21 +50,17 @@ RULES:
 
 
 class EvaCore:
-    GEMINI_MODEL = "gemini-2.0-flash"
-    GEMINI_URL = (
-        "https://generativelanguage.googleapis.com/v1beta/models/"
-        "{model}:generateContent?key={key}"
-    )
+    GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
+    GROQ_MODEL = "llama3-8b-8192"  # fast, free-tier friendly
 
     def __init__(self, model: str = None):
-        # model arg kept for CLI compat; override with EVA_GEMINI_MODEL if needed
-        self.model = os.environ.get("EVA_GEMINI_MODEL", model or self.GEMINI_MODEL)
-        self.api_key = os.environ.get("GEMINI_API_KEY", "")
+        self.model = os.environ.get("EVA_GROQ_MODEL", model or self.GROQ_MODEL)
+        self.api_key = os.environ.get("GROQ_API_KEY", "")
         if not self.api_key:
             self._error(
-                "GEMINI_API_KEY not set.\n"
-                "  Get a free key at: https://aistudio.google.com\n"
-                "  Then run: export GEMINI_API_KEY=your-key-here"
+                "GROQ_API_KEY not set.\n"
+                "  Get a free key at: https://console.groq.com\n"
+                "  Then run: export GROQ_API_KEY=your-key-here"
             )
 
     def _build_system_prompt(self) -> str:
@@ -73,49 +69,50 @@ class EvaCore:
         )
         return SYSTEM_PROMPT.format(tool_knowledge=tool_knowledge_str)
 
-    def _call_gemini(self, query: str) -> dict:
-        url = self.GEMINI_URL.format(model=self.model, key=self.api_key)
+    def _call_groq(self, query: str) -> dict:
+        headers = {
+            "Authorization": f"Bearer {self.api_key}",
+            "Content-Type": "application/json",
+        }
         payload = {
-            "system_instruction": {
-                "parts": [{"text": self._build_system_prompt()}]
-            },
-            "contents": [
-                {
-                    "role": "user",
-                    "parts": [{"text": f"User query: {query}\n\nRespond with JSON only."}],
-                }
+            "model": self.model,
+            "messages": [
+                {"role": "system", "content": self._build_system_prompt()},
+                {"role": "user", "content": f"User query: {query}\n\nRespond with JSON only."},
             ],
-            "generationConfig": {
-                "responseMimeType": "application/json",
-                "maxOutputTokens": 512,
-                "temperature": 0.1,
-            },
+            "max_tokens": 512,
+            "temperature": 0.1,
+            "response_format": {"type": "json_object"},
         }
 
         try:
-            response = requests.post(url, json=payload, timeout=30)
+            response = requests.post(self.GROQ_URL, headers=headers, json=payload, timeout=30)
             response.raise_for_status()
         except requests.exceptions.ConnectionError:
-            self._error("Cannot reach the Gemini API. Check your internet connection.")
+            self._error("Cannot reach the Groq API. Check your internet connection.")
         except requests.exceptions.Timeout:
-            self._error("Gemini API request timed out. Try again.")
+            self._error("Groq API request timed out. Try again.")
         except requests.exceptions.HTTPError as e:
             status = e.response.status_code if e.response else "?"
-            if status == 400:
-                self._error("Bad request to Gemini API. The query may be malformed.")
-            elif status == 403:
-                self._error("Invalid GEMINI_API_KEY. Check your key at aistudio.google.com.")
+            if status == 401:
+                self._error("Invalid GROQ_API_KEY. Check your key at console.groq.com.")
             elif status == 429:
-                self._error("Gemini rate limit hit. Wait a moment and try again.")
+                self._error("Groq rate limit hit. Wait a moment and try again.")
+            elif status == 400:
+                # Some Groq models don't support json_object mode — retry without it
+                payload.pop("response_format", None)
+                try:
+                    response = requests.post(self.GROQ_URL, headers=headers, json=payload, timeout=30)
+                    response.raise_for_status()
+                except Exception as retry_err:
+                    self._error(f"Groq API error after retry: {retry_err}")
             else:
-                self._error(f"Gemini API error {status}: {e}")
+                self._error(f"Groq API error {status}: {e}")
 
         data = response.json()
-        try:
-            raw = data["candidates"][0]["content"]["parts"][0]["text"]
-        except (KeyError, IndexError):
-            self._error(f"Unexpected Gemini response format:\n{json.dumps(data, indent=2)}")
-
+        raw = data.get("choices", [{}])[0].get("message", {}).get("content", "")
+        if not raw:
+            self._error(f"Empty response from Groq. Full response:\n{json.dumps(data, indent=2)}")
         return self._parse_response(raw)
 
     def _parse_response(self, raw: str) -> dict:
@@ -147,7 +144,7 @@ class EvaCore:
     def run(self, query: str, explain: bool = False):
         self._print_header(query)
 
-        result = self._call_gemini(query)
+        result = self._call_groq(query)
 
         command = result.get("command", "")
         explanation = result.get("explanation", "")

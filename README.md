@@ -1,27 +1,27 @@
 # ⬡ eva — AI shell assistant for bioinformaticians
 
-Eva translates natural language into shell commands, with deep knowledge of bioinformatics tools like `samtools`, `bedtools`, `BLAST`, `GATK`, `BWA`, and more. Powered by **Google Gemini** — free to use via Google AI Studio, no credit card needed.
+Eva translates natural language into shell commands, with deep knowledge of bioinformatics tools like `samtools`, `bedtools`, `BLAST`, `GATK`, `BWA`, and more. Powered by **Groq** — blazing fast inference, free tier, no credit card needed.
 
 ---
 
 ## Requirements
 
 - Python 3.8+
-- A free [Google Gemini API key](https://aistudio.google.com) (no credit card needed)
+- A free [Groq API key](https://console.groq.com) (no credit card needed)
 
 ---
 
 ## Installation
 
-### 1. Get your free Gemini API key
+### 1. Get your free Groq API key
 
-1. Go to [aistudio.google.com](https://aistudio.google.com)
-2. Sign in with your Google account
-3. Click **Get API key** → **Create API key**
+1. Go to [console.groq.com](https://console.groq.com)
+2. Sign up with your Google or GitHub account — no credit card needed
+3. Click **API Keys** → **Create API Key**
 4. Copy the key and export it:
 
 ```bash
-export GEMINI_API_KEY=your-key-here
+export GROQ_API_KEY=your-key-here
 # Add to ~/.bashrc or ~/.zshrc to make it permanent
 ```
 
@@ -85,15 +85,15 @@ eva run fastqc on all fastq files in this directory
 ### Options
 
 ```
-eva --explain                    Show explanation of the command (default: on)
-eva --model gemini-1.5-pro       Use a different Gemini model
-eva --list-tools                 List all bioinformatics tools Eva knows about
-eva --version                    Show version
+eva --explain                        Show explanation of the command (default: on)
+eva --model llama3-70b-8192          Use a more powerful Groq model
+eva --list-tools                     List all bioinformatics tools Eva knows about
+eva --version                        Show version
 ```
 
 You can also override the model via environment variable:
 ```bash
-export EVA_GEMINI_MODEL=gemini-1.5-pro
+export EVA_GROQ_MODEL=mixtral-8x7b-32768
 ```
 
 ---
@@ -102,7 +102,7 @@ export EVA_GEMINI_MODEL=gemini-1.5-pro
 
 1. You type a natural language query after `eva`.
 2. Eva builds a domain-specific system prompt including a bioinformatics knowledge base.
-3. The prompt is sent to the **Gemini API** (`gemini-2.0-flash` by default — free tier).
+3. The prompt is sent to the **Groq API** (`llama3-8b-8192` by default — free tier, very fast).
 4. The model returns a JSON response with: `command`, `explanation`, `confidence`, and optional `warning`.
 5. Eva prints the command and metadata in a clean, colored terminal output.
 
@@ -123,29 +123,30 @@ TOOL_LIST.append("mytool")
 
 ---
 
-## Switching Gemini models
+## Switching Groq models
 
 ```bash
-eva --model gemini-2.0-flash sort my bam file        # default, fastest, free
-eva --model gemini-1.5-pro run fastqc on all samples # more powerful
+eva --model llama3-8b-8192 sort my bam file         # default, fastest
+eva --model llama3-70b-8192 run fastqc on all samples # smarter, still free
+eva --model mixtral-8x7b-32768 call variants from bam  # great for complex queries
 ```
 
-Available free models: `gemini-2.0-flash`, `gemini-1.5-flash`, `gemini-1.5-pro`
+All models above are available on Groq's free tier.
 
 ---
 
 ## Troubleshooting
 
-**`GEMINI_API_KEY not set`** — export your key:
+**`GROQ_API_KEY not set`** — export your key:
 ```bash
-export GEMINI_API_KEY=your-key-here
+export GROQ_API_KEY=your-key-here
 ```
 
-**`Invalid GEMINI_API_KEY (403)`** — double-check your key at [aistudio.google.com](https://aistudio.google.com).
+**`Invalid GROQ_API_KEY (401)`** — double-check your key at [console.groq.com](https://console.groq.com).
 
-**`Rate limit hit (429)`** — the free tier has per-minute limits. Wait a few seconds and retry.
+**`Rate limit hit (429)`** — Groq's free tier has per-minute limits. Wait a few seconds and retry.
 
-**Wrong command** — try rephrasing more specifically, e.g. instead of *"align reads"* say *"align paired-end fastq reads with bwa mem to a reference genome"*.
+**Wrong command** — try rephrasing more specifically, e.g. instead of *"align reads"* say *"align paired-end fastq reads with bwa mem to a reference genome"*. Switching to `llama3-70b-8192` also improves accuracy.
 
 ---
 
@@ -154,7 +155,7 @@ export GEMINI_API_KEY=your-key-here
 ```
 eva/
 ├── eva.py          # CLI entry point (argparse)
-├── eva_core.py     # Gemini API call, prompt building, output rendering
+├── eva_core.py     # Groq API call, prompt building, output rendering
 ├── eva_tools.py    # Bioinformatics tool knowledge base
 ├── setup.py        # pip installation
 └── README.md

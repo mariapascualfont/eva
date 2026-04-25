@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 eva - AI-powered shell command assistant for bioinformaticians
-Uses the Google Gemini API to translate natural language into shell commands.
+Uses the Groq API to translate natural language into shell commands.
 """
 
 import argparse
@@ -34,8 +34,8 @@ Examples:
 
     parser.add_argument(
         "--model",
-        default="gemini-2.0-flash",
-        help="Gemini model to use (default: gemini-2.0-flash). Can also set EVA_GEMINI_MODEL env var.",
+        default="llama3-8b-8192",
+        help="Groq model to use (default: llama3-8b-8192). Other options: llama3-70b-8192, mixtral-8x7b-32768. Can also set EVA_GROQ_MODEL env var.",
     )
 
     parser.add_argument(
