@@ -33,6 +33,11 @@ cd eva/
 pip install .
 ```
 
+*If pip install does not work due to the external environment, you can try:
+```bash
+pip install . --break-system-packages
+```
+
 This installs the `eva` command globally.
 
 Or, without installing, run directly:
