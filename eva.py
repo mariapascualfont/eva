@@ -75,9 +75,8 @@ Examples:
 
     args = parser.parse_args()
 
-    print_welcome()
-
     if not args.query and not args.list_tools:
+        print_welcome()
         parser.print_help()
         sys.exit(0)
 
