@@ -6,8 +6,18 @@ Uses the Groq API to translate natural language into shell commands.
 
 import argparse
 import sys
+import time
 from eva_core import EvaCore
 
+def animated_greeting():
+    message = " Here is your bash command:"
+    # Typing effect for the message
+    sys.stdout.write("\033[1;32m")
+    for char in message:
+        sys.stdout.write(char)
+        sys.stdout.flush()
+        time.sleep(0.03)
+    sys.stdout.write("\033[0m\n")
 
 def main():
     parser = argparse.ArgumentParser(
