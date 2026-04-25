@@ -1,5 +1,5 @@
 """
-eva_core.py - Core logic for Eva: prompt construction, Junie API, output rendering.
+eva_core.py - Core logic for Eva: prompt construction, Groq API, output rendering.
 """
 
 import sys
@@ -50,18 +50,17 @@ RULES:
 
 
 class EvaCore:
-    JUNIE_URL = "https://api.junie.ai/v1/chat/completions"
-    DEFAULT_MODEL = "gpt-4o"
+    GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
+    GROQ_MODEL = "llama-3.1-8b-instant"  # fast, free-tier, reliable JSON output
 
     def __init__(self, model: str = None):
-        self.api_key = os.environ.get("JUNIE_API_KEY")
-        self.model = model or os.environ.get("EVA_MODEL") or self.DEFAULT_MODEL
-
+        self.model = os.environ.get("EVA_GROQ_MODEL", model or self.GROQ_MODEL)
+        self.api_key = os.environ.get("GROQ_API_KEY", "")
         if not self.api_key:
             self._error(
-                "JUNIE_API_KEY not set.\n"
-                "  Get a free key at: Get one at junie.jetbrains.com\n"
-                "  Then run: export JUNIE_API_KEY=your-key-here"
+                "GROQ_API_KEY not set.\n"
+                "  Get a free key at: https://console.groq.com\n"
+                "  Then run: export GROQ_API_KEY=your-key-here"
             )
 
     def _build_system_prompt(self) -> str:
@@ -70,7 +69,7 @@ class EvaCore:
         )
         return SYSTEM_PROMPT.format(tool_knowledge=tool_knowledge_str)
 
-    def _call_junie(self, query: str) -> dict:
+    def _call_groq(self, query: str) -> dict:
         headers = {
             "Authorization": f"Bearer {self.api_key}",
             "Content-Type": "application/json",
@@ -79,7 +78,7 @@ class EvaCore:
             "model": self.model,
             "messages": [
                 {"role": "system", "content": self._build_system_prompt()},
-                {"role": "user", "content": f"User query: {query}\n\nRespond with a JSON object only."},
+                {"role": "user", "content": f"User query: {query}\n\nRespond with a JSON object only. No markdown, no extra text."},
             ],
             "max_tokens": 512,
             "temperature": 0.1,
@@ -87,32 +86,25 @@ class EvaCore:
         }
 
         try:
-            response = requests.post(self.JUNIE_URL, headers=headers, json=payload, timeout=30)
+            response = requests.post(self.GROQ_URL, headers=headers, json=payload, timeout=30)
             response.raise_for_status()
         except requests.exceptions.ConnectionError:
-            self._error("Cannot reach the Junie API. Check your internet connection.")
+            self._error("Cannot reach the Groq API. Check your internet connection.")
         except requests.exceptions.Timeout:
-            self._error("Junie API request timed out. Try again.")
+            self._error("Groq API request timed out. Try again.")
         except requests.exceptions.HTTPError as e:
             status = e.response.status_code if e.response else "?"
             if status == 401:
-                self._error("Invalid JUNIE_API_KEY. Check your key at junie.jetbrains.com.")
+                self._error("Invalid GROQ_API_KEY. Check your key at console.groq.com.")
             elif status == 429:
-                self._error("Junie rate limit hit. Wait a moment and try again.")
-            elif status == 400:
-                payload.pop("response_format", None) 
-                try:
-                    response = requests.post(self.JUNIE_URL, headers=headers, json=payload, timeout=30)
-                    response.raise_for_status()
-                except Exception as retry_err:
-                    self._error(f"Junie AI API error after retry: {retry_err}")
+                self._error("Groq rate limit hit. Wait a moment and try again.")
             else:
-                self._error(f"Junie API error {status}: {e}")
+                self._error(f"Groq API error {status}: {e}")
 
         data = response.json()
         raw = data.get("choices", [{}])[0].get("message", {}).get("content", "")
         if not raw:
-            self._error(f"Empty response from Junie. Full response:\n{json.dumps(data, indent=2)}")
+            self._error(f"Empty response from Groq. Full response:\n{json.dumps(data, indent=2)}")
         return self._parse_response(raw)
 
     def _parse_response(self, raw: str) -> dict:
@@ -144,7 +136,7 @@ class EvaCore:
     def run(self, query: str, explain: bool = False):
         self._print_header(query)
 
-        result = self._call_junie(query)
+        result = self._call_groq(query)
 
         command = result.get("command", "")
         explanation = result.get("explanation", "")
